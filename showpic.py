@@ -50,7 +50,8 @@ if w.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE,SCRIPT_
         "[on/off]",
         "switch the mode \n",
         " || on|off"
-        " || showall on|off",
+        " || showall on|off"
+        " || showtime",
         "showpic_cb",
         '')
 
@@ -91,6 +92,9 @@ def showpic_cb(data, buffer, args):
             w.config_set_plugin('showall', 'on')
         else:
             w.config_set_plugin('showall', 'off')
+    elif args[0] == 'showtime':
+        if args[1].isdigit():
+            w.config_set_plugin('showtime', args[1])
     return w.WEECHAT_RC_OK
 
 hook = w.hook_print("", "", "", 1, "my_print_cb", "")
