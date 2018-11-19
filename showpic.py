@@ -20,6 +20,8 @@
 # (this script requires WeeChat 0.3 or newer)
 #
 # History:
+# 2018-11-19, ksy
+#  version 0.6: add lastpic
 # 2018-11-08, ksy <910661511@qq.com>
 #  version 0.5: initial release
 
@@ -50,26 +52,32 @@ if w.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE,SCRIPT_
         "[on/off]",
         "switch the mode \n",
         " || on|off"
-        " || showall on|off"
-        " || showtime",
+        " || showtime"
+        " || showall on|off",
         "showpic_cb",
         '')
 
 def my_print_cb(data, buffer, date, tags, displayed, highlight, prefix, message):
     showall = True if w.config_get_plugin('showall') == 'on' else False
+    global lastpic
     if highlight or showall:
         msg = message
         showtime = int(w.config_get_plugin('showtime'))
         if msg.startswith('[图片]('):
             pic = msg.lstrip('[图片](').rstrip(')')
+            lastpic[buffer] = pic
             w.hook_process("feh -g 800x600+1000+400 --scale-down " + pic, showtime * 1000, "", "")
-        if 'https://img.vim-cn.com/' in msg:
+        elif msg.startswith('[表情]('):
+            pic = msg.lstrip('[表情](').rstrip(')')
+            w.hook_process("feh -g 200x200+1000+400 --scale-down " + pic, showtime * 1000, "", "")
+        elif 'https://img.vim-cn.com/' in msg:
             msg = re.findall(r"(https:.*?(png|jpg|jpeg|gif))", msg)[0][0]
             r = requests.get(msg, stream=True)
             with open('/tmp/picbed_tmp.png','wb') as f:
                 for chunk in r.iter_content(chunk_size=32):
                     f.write(chunk)
             w.hook_process("feh -g 800x600+1000+400 --scale-down " + '/tmp/picbed_tmp.png', showtime * 1000, "", "")
+            lastpic[buffer] = '/tmp/picbed_tmp.png'
     return w.WEECHAT_RC_OK
 
 def config_cb(data, option, value):
@@ -82,20 +90,24 @@ def config_cb(data, option, value):
     return w.WEECHAT_RC_OK
 
 def showpic_cb(data, buffer, args):
-    args = args.split()
-    if args[0] == 'on':
-        w.config_set_plugin('switch', 'on')
-    elif args[0] == 'off':
-        w.config_set_plugin('switch', 'off')
-    elif args[0] == 'showall':
-        if args[1] == 'on':
-            w.config_set_plugin('showall', 'on')
-        else:
-            w.config_set_plugin('showall', 'off')
-    elif args[0] == 'showtime':
-        if args[1].isdigit():
-            w.config_set_plugin('showtime', args[1])
+    if args == '':
+        w.hook_process("feh -g 800x600+1000+400 --scale-down " + lastpic[buffer], 0, "", "")
+    else:
+        args = args.split()
+        if args[0] == 'on':
+            w.config_set_plugin('switch', 'on')
+        elif args[0] == 'off':
+            w.config_set_plugin('switch', 'off')
+        elif args[0] == 'showall':
+            if args[1] == 'on':
+                w.config_set_plugin('showall', 'on')
+            else:
+                w.config_set_plugin('showall', 'off')
+        elif args[0] == 'showtime':
+            if args[1].isdigit():
+                w.config_set_plugin('showtime', args[1])
     return w.WEECHAT_RC_OK
 
 hook = w.hook_print("", "", "", 1, "my_print_cb", "")
 w.hook_config("plugins.var.python." + SCRIPT_NAME + ".switch", "config_cb", "")
+lastpic = {}
